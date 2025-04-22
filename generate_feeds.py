@@ -17,9 +17,12 @@ if not os.path.exists(image_dir):
     os.makedirs(image_dir)
 
 # Function to extract image URL from the summary
-def extract_image_url(summary):
-    match = re.search(r'<img src="(.*?)"', summary)
-    return match.group(1) if match else None
+def extract_image_url(entry):
+    # Check if 'summary' exists in entry and extract image URL if it does
+    if 'summary' in entry:
+        match = re.search(r'<img src="(.*?)"', entry.summary)
+        return match.group(1) if match else None
+    return None
 
 # Function to download the image and save with a static filename
 def download_image(img_url, image_filename):
@@ -38,7 +41,8 @@ def download_image(img_url, image_filename):
 for name, url in feeds.items():
     d = feedparser.parse(url)
     for index, entry in enumerate(d.entries[:6]):  # Limit to 6 images
-        img_url = extract_image_url(entry.summary)
+        img_url = extract_image_url(entry)
         if img_url:
             img_filename = f"movie{index+1}.jpg"  # Static filenames like movie1.jpg, movie2.jpg, etc.
             download_image(img_url, img_filename)  # Save the image with a static filename
+
