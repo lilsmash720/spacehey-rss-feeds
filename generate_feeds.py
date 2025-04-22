@@ -2,6 +2,13 @@ import feedparser
 import re
 import os
 import requests
+import tmdbv3api  # Make sure to install tmdbv3api: pip install tmdbv3api
+
+# TMDb API Key
+tmdb_api_key = '08d2466ce60a24dce25b03cc1ae3f497'
+tmdb = tmdbv3api.TMDb()
+tmdb.api_key = tmdb_api_key
+movie_search = tmdbv3api.Movie()
 
 # RSS feed URLs
 feeds = {
@@ -16,12 +23,19 @@ image_dir = "images"
 if not os.path.exists(image_dir):
     os.makedirs(image_dir)
 
-# Function to extract image URL from the summary
-def extract_image_url(entry):
-    # Check if 'summary' exists in entry and extract image URL if it does
-    if 'summary' in entry:
-        match = re.search(r'<img src="(.*?)"', entry.summary)
-        return match.group(1) if match else None
+# Function to extract movie title from the RSS entry
+def extract_movie_title(entry):
+    # The title is usually in the 'title' field of the RSS entry
+    return entry.title if 'title' in entry else None
+
+# Function to get the poster from TMDb
+def get_poster_from_tmdb(movie_title):
+    search_results = movie_search.search(movie_title)
+    if search_results:
+        movie = search_results[0]  # Get the first result (most relevant)
+        if movie.poster_path:
+            poster_url = f"https://image.tmdb.org/t/p/w500{movie.poster_path}"  # 500px wide image
+            return poster_url
     return None
 
 # Function to download the image and save with a static filename
@@ -41,8 +55,11 @@ def download_image(img_url, image_filename):
 for name, url in feeds.items():
     d = feedparser.parse(url)
     for index, entry in enumerate(d.entries[:6]):  # Limit to 6 images
-        img_url = extract_image_url(entry)
-        if img_url:
-            img_filename = f"movie{index+1}.jpg"  # Static filenames like movie1.jpg, movie2.jpg, etc.
-            download_image(img_url, img_filename)  # Save the image with a static filename
+        movie_title = extract_movie_title(entry)
+        if movie_title:
+            print(f"Searching for {movie_title} on TMDb...")
+            poster_url = get_poster_from_tmdb(movie_title)
+            if poster_url:
+                img_filename = f"movie{index+1}.jpg"  # Static filenames like movie1.jpg, movie2.jpg, etc.
+                download_image(poster_url, img_filename)  # Save the image with a static filename
 
