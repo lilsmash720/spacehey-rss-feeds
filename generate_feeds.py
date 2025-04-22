@@ -5,7 +5,7 @@ import requests
 import tmdbv3api  # Make sure to install tmdbv3api: pip install tmdbv3api
 
 # TMDb API Key
-tmdb_api_key = '08d2466ce60a24dce25b03cc1ae3f497'
+tmdb_api_key = '08d2466ce60a24dce25b03cc1ae3f497'  # Replace with your actual API key
 tmdb = tmdbv3api.TMDb()
 tmdb.api_key = tmdb_api_key
 movie_search = tmdbv3api.Movie()
@@ -31,8 +31,9 @@ def extract_movie_title(entry):
 # Function to get the poster from TMDb
 def get_poster_from_tmdb(movie_title):
     search_results = movie_search.search(movie_title)
-    if search_results:
-        movie = search_results[0]  # Get the first result (most relevant)
+    
+    if search_results.results:  # Ensure there are results
+        movie = search_results.results[0]  # Get the first result (most relevant)
         if movie.poster_path:
             poster_url = f"https://image.tmdb.org/t/p/w500{movie.poster_path}"  # 500px wide image
             return poster_url
@@ -62,4 +63,5 @@ for name, url in feeds.items():
             if poster_url:
                 img_filename = f"movie{index+1}.jpg"  # Static filenames like movie1.jpg, movie2.jpg, etc.
                 download_image(poster_url, img_filename)  # Save the image with a static filename
+
 
