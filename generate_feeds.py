@@ -1,8 +1,7 @@
 import feedparser
-import re
 import os
 import requests
-import tmdbv3api  # Make sure to install tmdbv3api: pip install tmdbv3api
+import tmdbv3api
 
 # TMDb API Key
 tmdb_api_key = '08d2466ce60a24dce25b03cc1ae3f497'  # Replace with your actual API key
@@ -25,7 +24,6 @@ if not os.path.exists(image_dir):
 
 # Function to extract movie title from the RSS entry
 def extract_movie_title(entry):
-    # The title is usually in the 'title' field of the RSS entry
     return entry.title if 'title' in entry else None
 
 # Function to get the poster from TMDb
@@ -52,16 +50,45 @@ def download_image(img_url, image_filename):
     except Exception as e:
         print(f"Error downloading {img_url}: {e}")
 
-# Iterate over the feeds and download images
-for name, url in feeds.items():
-    d = feedparser.parse(url)
-    for index, entry in enumerate(d.entries[:6]):  # Limit to 6 images
-        movie_title = extract_movie_title(entry)
-        if movie_title:
-            print(f"Searching for {movie_title} on TMDb...")
-            poster_url = get_poster_from_tmdb(movie_title)
-            if poster_url:
-                img_filename = f"movie{index+1}.jpg"  # Static filenames like movie1.jpg, movie2.jpg, etc.
-                download_image(poster_url, img_filename)  # Save the image with a static filename
+# Generate HTML for the RSS feed
+def generate_html():
+    html_content = '''
+    <html>
+    <head><title>My Recent Movies</title></head>
+    <body>
+        <h1>Recently Watched Movies</h1>
+        <div>
+    '''
+    
+    for name, url in feeds.items():
+        d = feedparser.parse(url)
+        for index, entry in enumerate(d.entries[:6]):  # Limit to 6 movies
+            movie_title = extract_movie_title(entry)
+            if movie_title:
+                print(f"Searching for {movie_title} on TMDb...")
+                poster_url = get_poster_from_tmdb(movie_title)
+                if poster_url:
+                    img_filename = f"movie{index+1}.jpg"  # Static filenames like movie1.jpg, movie2.jpg, etc.
+                    download_image(poster_url, img_filename)  # Save the image with a static filename
+                    html_content += f'''
+                    <div>
+                        <a href="{entry.link}" target="_blank">
+                            <img src="images/{img_filename}" alt="{movie_title} Poster" width="200">
+                            <p>{movie_title}</p>
+                        </a>
+                    </div>
+                    '''
+    
+    html_content += '''
+        </div>
+    </body>
+    </html>
+    '''
+    
+    with open('movies.html', 'w') as f:
+        f.write(html_content)
+
+# Run the HTML generation
+generate_html()
 
 
