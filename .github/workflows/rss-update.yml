@@ -1,0 +1,32 @@
+name: Update RSS Feeds
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.x
+
+    - name: Install dependencies
+      run: pip install feedparser
+
+    - name: Generate HTML
+      run: python generate_feeds.py
+
+    - name: Commit and push
+      run: |
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add *.html
+        git commit -m "Update feed HTML" || echo "No changes"
+        git push
