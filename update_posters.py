@@ -1,73 +1,57 @@
-import os
 import requests
+import os
 
-# === CONFIG ===
-SIMKL_API_KEY = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
-POSTER_DIR = "posters"
-BASE_URL = "https://api.simkl.com"  # Simkl base URL
+# Your Simkl API access details
+simkl_api_url = "https://api.simkl.com/v1/"
+simkl_api_key = "YOUR_SIMKL_API_KEY"
 
-os.makedirs(POSTER_DIR, exist_ok=True)
-
-def fetch_simkl_data(type_, count=6):
-    # Construct the correct endpoint URL
-    if type_ == "movie":
-        url = f"{BASE_URL}/movies/trending"
-    else:
-        url = f"{BASE_URL}/shows/trending"
-
-    params = {
-        "token": SIMKL_API_KEY,
-        "limit": count,
-        "country": "us"
-    }
+# Make the request for movies and TV shows
+def fetch_simkl_data():
+    headers = {'Authorization': f'Bearer {simkl_api_key}'}
     
-    res = requests.get(url, params=params)
+    # Fetch the first 6 movies
+    movie_url = f"{simkl_api_url}movies?limit=6"
+    tv_url = f"{simkl_api_url}shows?limit=6"
     
-    if res.status_code != 200:
-        print(f"❌ Error fetching {type_} data: {res.status_code}")
-        return []
-
-    # Debugging: Print the raw response
-    print("Raw API Response:", res.json())
+    movies_response = requests.get(movie_url, headers=headers).json()
+    shows_response = requests.get(tv_url, headers=headers).json()
     
-    # Directly use the response as a list
-    items = res.json()  # The response is a list now
+    return movies_response, shows_response
+
+# Download the posters
+def download_posters(movies, shows):
+    if not os.path.exists("posters"):
+        os.mkdir("posters")
     
-    return items
+    # Process movies
+    for i, movie in enumerate(movies):
+        poster_path = movie.get('poster')
+        if poster_path:
+            full_url = f"https://simkl.com/static/media/posters/{poster_path}.jpg"
+            download_image(full_url, f"posters/movie{i+1}.jpg")
+    
+    # Process shows
+    for i, show in enumerate(shows):
+        poster_path = show.get('poster')
+        if poster_path:
+            full_url = f"https://simkl.com/static/media/posters/{poster_path}.jpg"
+            download_image(full_url, f"posters/show{i+1}.jpg")
 
-def download_poster(poster_url, filename):
-    if not poster_url:
-        print(f"❌ No poster URL for {filename}")
-        return
+# Download the image to local storage
+def download_image(url, file_name):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        with open(file_name, 'wb') as f:
+            f.write(response.content)
+        print(f"Downloaded {file_name}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error downloading {file_name}: {e}")
 
-    # Construct the full URL to the poster image
-    full_url = f"https://simkl.com/posters/{poster_url}"
-    img_data = requests.get(full_url).content
-
-    with open(os.path.join(POSTER_DIR, filename), "wb") as f:
-        f.write(img_data)
-    print(f"✅ Downloaded {filename} from Simkl.")
-
-def update_posters():
-    print("\n🎬 Updating most recent movie posters...")
-    movie_items = fetch_simkl_data("movie")
-    for i, item in enumerate(movie_items, start=1):
-        poster_url = item.get("poster")
-        if poster_url:
-            download_poster(poster_url, f"movie{i}.jpg")
-        else:
-            print(f"❌ No poster found for movie {i}.")
-
-    print("\n📺 Updating most recent TV show posters...")
-    tv_items = fetch_simkl_data("tv")
-    for i, item in enumerate(tv_items, start=1):
-        poster_url = item.get("poster")
-        if poster_url:
-            download_poster(poster_url, f"show{i}.jpg")
-        else:
-            print(f"❌ No poster found for TV show {i}.")
+# Main function to handle the process
+def main():
+    movies, shows = fetch_simkl_data()
+    download_posters(movies, shows)
 
 if __name__ == "__main__":
-    update_posters()
-
-
+    main()
