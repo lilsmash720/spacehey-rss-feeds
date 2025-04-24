@@ -18,7 +18,11 @@ def extract_simkl_ids(feed_url, type_, count=6):
     simkl_ids = []
     print(f"Parsing {type_} RSS feed...")
     for entry in feed.entries[:count]:
-        match = re.search(rf"/{type_}/(\d+)", entry.link)
+        if type_ == "tv":
+            match = re.search(r"/tv/(\d+)", entry.link)  # Adjust regex for TV shows
+        else:
+            match = re.search(rf"/{type_}/(\d+)", entry.link)
+        
         if match:
             simkl_ids.append(match.group(1))
         else:
