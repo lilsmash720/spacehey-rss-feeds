@@ -40,11 +40,12 @@ def get_tmdb_id_from_simkl(simkl_type, simkl_id):
         return None
     data = res.json()
     tmdb_id = data.get("ids", {}).get("tmdb")
+    imdb_id = data.get("ids", {}).get("imdb")  # Fetch IMDb ID if available
     if not tmdb_id:
         print(f"❌ No TMDb ID found for {simkl_type} ID {simkl_id}")
-        return None
-    print(f"🎯 Simkl ID {simkl_id} ➡️ TMDb ID: {tmdb_id}")
-    return tmdb_id
+    if imdb_id:
+        print(f"🎯 Simkl ID {simkl_id} ➡️ IMDb ID: {imdb_id}")
+    return tmdb_id, imdb_id
 
 def get_tmdb_id_from_imdb(imdb_id):
     """Fetch TMDb ID using IMDb ID"""
@@ -94,9 +95,8 @@ def update_posters():
     print("\n🎬 Updating most recent movie posters...")
     movie_ids = extract_simkl_ids(MOVIES_RSS, "movies")
     for i, simkl_id in enumerate(movie_ids, start=1):
-        tmdb_id = get_tmdb_id_from_simkl("movie", simkl_id)
-        if not tmdb_id:
-            imdb_id = "tt" + simkl_id  # If no TMDb ID, try using IMDb ID (correctly formatted)
+        tmdb_id, imdb_id = get_tmdb_id_from_simkl("movie", simkl_id)
+        if not tmdb_id and imdb_id:
             print(f"❌ No TMDb ID found, trying IMDb ID {imdb_id}")
             tmdb_id = get_tmdb_id_from_imdb(imdb_id)
         poster_path = get_poster_path(tmdb_id, "movie") if tmdb_id else None
@@ -107,9 +107,8 @@ def update_posters():
     if not show_ids:
         print("❌ No TV show IDs found. Check the RSS feed or filter settings.")
     for i, simkl_id in enumerate(show_ids, start=1):
-        tmdb_id = get_tmdb_id_from_simkl("show", simkl_id)
-        if not tmdb_id:
-            imdb_id = "tt" + simkl_id  # If no TMDb ID, try using IMDb ID (correctly formatted)
+        tmdb_id, imdb_id = get_tmdb_id_from_simkl("show", simkl_id)
+        if not tmdb_id and imdb_id:
             print(f"❌ No TMDb ID found, trying IMDb ID {imdb_id}")
             tmdb_id = get_tmdb_id_from_imdb(imdb_id)
         if tmdb_id:
@@ -120,4 +119,3 @@ def update_posters():
 
 if __name__ == "__main__":
     update_posters()
-
