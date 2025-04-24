@@ -17,6 +17,8 @@ def fetch_simkl_data(type_, count=6):
         print(f"❌ Simkl API error for {type_}: {res.status_code}")
         return []
     data = res.json()
+    if isinstance(data, list):
+        return data  # Return the list directly if the response is a list
     items = data.get(type_, [])
     print(f"Found {len(items)} {type_}s.")
     return items
