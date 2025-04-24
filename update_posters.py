@@ -4,43 +4,43 @@ from pathlib import Path
 import re
 
 # --- Config ---
-SIMKL_API_KEY = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
+CLIENT_ID = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
 USER_ID = "7233116"
 POSTER_DIR = Path("posters")
 POSTER_DIR.mkdir(exist_ok=True)
-
-headers = {
-    "simkl-api-key": SIMKL_API_KEY,
-    "Accept": "application/json"
-}
 
 def sanitize_filename(name):
     """Remove special characters from filenames"""
     return re.sub(r'[\\/*?:"<>|]', "", name)
 
-def fetch_items(url):
+def fetch_media(media_type):
+    base_url = f"https://api.simkl.com/users/{USER_ID}/all/{media_type}"
+    params = {
+        "client_id": CLIENT_ID,
+        "extended": "full"
+    }
+    
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(base_url, params=params)
         response.raise_for_status()
         data = response.json()
-        
-        # Handle different response structures
-        if "movies" in data:  # For movies response
-            return data["movies"][:6]
-        if "shows" in data:  # For shows response
-            return data["shows"][:6]
-        return data[:6]  # Fallback
+        return data.get(media_type, [])[:6]
     except Exception as e:
-        print(f"Error fetching data: {e}")
+        print(f"Error fetching {media_type}: {e}")
         return []
 
 def get_poster_url(item):
-    # Handle different media types
-    media = item.get("movie") or item.get("show") or {}
-    posters = media.get("poster") or {}
-    
-    # Prioritize TMDB images if available
-    return posters.get("tmdb", {}).get("full") or posters.get("full")
+    # Unified structure for movies/shows
+    if "movie" in item:
+        media = item["movie"]
+    elif "show" in item:
+        media = item["show"]
+    else:
+        return None
+        
+    return (media.get("poster_tmdb") or 
+            media.get("poster") or 
+            media.get("artwork", {}).get("full"))
 
 def download_poster(url, filename):
     if not url:
@@ -60,25 +60,22 @@ def download_poster(url, filename):
 
 def main():
     print("Fetching media from Simkl...")
-
-    # Updated API endpoints
-    movie_url = f"https://api.simkl.com/movies/watched/{USER_ID}"
-    show_url = f"https://api.simkl.com/shows/watching/{USER_ID}"
-
-    movies = fetch_items(movie_url)
-    shows = fetch_items(show_url)
-
+    
+    # Fetch both movies and shows from "all" endpoint
+    movies = fetch_media("movies")
+    shows = fetch_media("shows")
+    
+    # Combine and process all media
     for i, item in enumerate(movies + shows, 1):
         media_type = "movie" if "movie" in item else "show"
-        title = item[media_type].get("title", f"unknown_{i}")
-        safe_title = sanitize_filename(title)[:50]  # Limit filename length
-        poster_url = get_poster_url(item)
+        title = item[media_type].get("title", f"media_{i}")
+        year = item[media_type].get("year", "")
+        safe_title = sanitize_filename(f"{title}_{year}")[:50]
         
-        ext = "jpg"  # Most posters are JPEGs
-        if poster_url and "webp" in poster_url:
-            ext = "webp"
-            
+        poster_url = get_poster_url(item)
+        ext = "webp" if "webp" in (poster_url or "") else "jpg"
         filename = f"{media_type}_{safe_title}_{i}.{ext}"
+        
         download_poster(poster_url, filename)
 
     print("Process completed. Check the 'posters' directory.")
