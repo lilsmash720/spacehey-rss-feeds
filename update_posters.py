@@ -12,7 +12,6 @@ TV_RSS = "https://api.simkl.com/feeds/list/tv/rss/?token=8aa77c51a4eeb0f2762a079
 POSTER_DIR = "posters"
 
 os.makedirs(POSTER_DIR, exist_ok=True)
-
 def extract_simkl_ids(feed_url, type_, count=6):
     feed = feedparser.parse(feed_url)
     simkl_ids = []
@@ -23,14 +22,15 @@ def extract_simkl_ids(feed_url, type_, count=6):
             # Support both "shows" and "tv" formats
             match = re.search(r"/(tv|shows)/(\d+)", entry.link)
         else:
-            match = re.search(rf"/{type_}/(\d+)", entry.link)
+            match = re.search(r"/movies/(\d+)", entry.link)  # Updated regex for movie links
         
         if match:
-            simkl_ids.append(match.group(2))  # Capture the ID (group 2 after the type)
+            simkl_ids.append(match.group(1))  # Capture the ID (group 1 after the type)
         else:
             print(f"❌ No {type_} ID found in entry: {entry.link}")
     print(f"Found {len(simkl_ids)} {type_} IDs.")
     return simkl_ids
+
 
 def get_tmdb_id_from_simkl(simkl_type, simkl_id):
     url = f"https://api.simkl.com/{simkl_type}s/{simkl_id}?extended=full"
