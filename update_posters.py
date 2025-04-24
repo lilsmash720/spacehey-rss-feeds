@@ -3,7 +3,7 @@ import os
 
 # Your Simkl API access details
 simkl_api_url = "https://api.simkl.com/v1/"
-simkl_api_key = "YOUR_SIMKL_API_KEY"
+simkl_api_key = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
 
 # Make the request for movies and TV shows
 def fetch_simkl_data():
