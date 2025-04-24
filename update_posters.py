@@ -1,4 +1,3 @@
-import os
 import requests
 from pathlib import Path
 import re
@@ -24,23 +23,29 @@ def fetch_media(media_type):
         response = requests.get(base_url, params=params)
         response.raise_for_status()
         data = response.json()
-        return data.get(media_type, [])[:6]
+        
+        print(f"Debug - {media_type} response:", data)  # Diagnostic output
+        
+        # Handle different response structures
+        if isinstance(data, dict):
+            return data.get(media_type, [])[:6]
+        elif isinstance(data, list):
+            return data[:6]
+        return []
+        
     except Exception as e:
-        print(f"Error fetching {media_type}: {e}")
+        print(f"Error fetching {media_type}: {str(e)}")
+        print(f"Response content: {response.text[:200]}")  # Show partial response
         return []
 
 def get_poster_url(item):
-    # Unified structure for movies/shows
-    if "movie" in item:
-        media = item["movie"]
-    elif "show" in item:
-        media = item["show"]
-    else:
-        return None
-        
-    return (media.get("poster_tmdb") or 
-            media.get("poster") or 
-            media.get("artwork", {}).get("full"))
+    # Handle both movie and show formats
+    media = item.get("movie") or item.get("show") or {}
+    return (
+        media.get("poster_tmdb") or 
+        media.get("poster") or 
+        media.get("artwork", {}).get("full")
+    )
 
 def download_poster(url, filename):
     if not url:
@@ -61,12 +66,16 @@ def download_poster(url, filename):
 def main():
     print("Fetching media from Simkl...")
     
-    # Fetch both movies and shows from "all" endpoint
     movies = fetch_media("movies")
     shows = fetch_media("shows")
     
     # Combine and process all media
-    for i, item in enumerate(movies + shows, 1):
+    all_media = movies + shows
+    if not all_media:
+        print("No media found. Check your Simkl profile has watched content.")
+        return
+
+    for i, item in enumerate(all_media, 1):
         media_type = "movie" if "movie" in item else "show"
         title = item[media_type].get("title", f"media_{i}")
         year = item[media_type].get("year", "")
