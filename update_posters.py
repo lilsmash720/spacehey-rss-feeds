@@ -19,11 +19,15 @@ def extract_simkl_ids(feed_url, type_, count=6):
     print(f"Parsing {type_} RSS feed...")
     for entry in feed.entries[:count]:
         print(f"Link found in entry: {entry.link}")  # Print the full link for inspection
-        # Correct regex to handle both 'shows' and 'tv' formats in the link
-        match = re.search(r"/(tv|shows)/(\d+)", entry.link)
+        if type_ == "tv":
+            # Support both "shows" and "tv" formats
+            match = re.search(r"/(tv|shows)/(\d+)", entry.link)
+        else:
+            # Movie URL format: /movies/{id}/{name}
+            match = re.search(r"/movies/(\d+)", entry.link)
         
         if match:
-            simkl_ids.append(match.group(2))  # Capture the ID (group 2 after the type)
+            simkl_ids.append(match.group(1))  # Capture the ID (group 1 after the type)
         else:
             print(f"❌ No {type_} ID found in entry: {entry.link}")
     print(f"Found {len(simkl_ids)} {type_} IDs.")
@@ -69,20 +73,29 @@ def download_poster(poster_path, filename):
 def update_posters():
     print("\n🎬 Updating most recent movie posters...")
     movie_ids = extract_simkl_ids(MOVIES_RSS, "movies")
+    if not movie_ids:
+        print("❌ No movie IDs found.")
     for i, simkl_id in enumerate(movie_ids, start=1):
         tmdb_id = get_tmdb_id_from_simkl("movie", simkl_id)
-        poster_path = get_poster_path(tmdb_id, "movie") if tmdb_id else None
+        if not tmdb_id:
+            print(f"❌ No TMDb ID for movie {simkl_id}")
+            continue
+        poster_path = get_poster_path(tmdb_id, "movie")
         download_poster(poster_path, f"movie{i}.jpg")
 
     print("\n📺 Updating most recent TV show posters...")
     show_ids = extract_simkl_ids(TV_RSS, "tv")
     if not show_ids:
-        print("❌ No TV show IDs found. Check the RSS feed or filter settings.")
+        print("❌ No TV show IDs found.")
     for i, simkl_id in enumerate(show_ids, start=1):
         tmdb_id = get_tmdb_id_from_simkl("show", simkl_id)
-        poster_path = get_poster_path(tmdb_id, "tv") if tmdb_id else None
+        if not tmdb_id:
+            print(f"❌ No TMDb ID for show {simkl_id}")
+            continue
+        poster_path = get_poster_path(tmdb_id, "tv")
         download_poster(poster_path, f"show{i}.jpg")
 
 if __name__ == "__main__":
     update_posters()
+
 
