@@ -1,79 +1,48 @@
 import os
-import re
 import requests
-import feedparser
 
 # === CONFIG ===
 SIMKL_CLIENT_ID = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
 TMDB_API_KEY = "08d2466ce60a24dce25b03cc1ae3f497"
-
-MOVIES_RSS = "https://api.simkl.com/feeds/list/movies/rss/?token=8aa77c51a4eeb0f2762a07937af73f46&client_id=feeds&country=us"
-TV_RSS = "https://api.simkl.com/feeds/list/tv/rss/?token=8aa77c51a4eeb0f2762a07937af73f46&client_id=feeds&country=us"
 POSTER_DIR = "posters"
 
 os.makedirs(POSTER_DIR, exist_ok=True)
 
-def extract_simkl_ids(feed_url, type_, count=6):
-    feed = feedparser.parse(feed_url)
-    simkl_ids = []
-    print(f"Parsing {type_} RSS feed...")
-    for entry in feed.entries[:count]:
-        print(f"Link found in entry: {entry.link}")  # Print the full link for inspection
-        if type_ == "tv":
-            match = re.search(r"/(tv|shows)/(\d+)", entry.link)
-        else:
-            match = re.search(r"/movies/(\d+)", entry.link)  # Updated regex for movie links
-        
-        if match:
-            simkl_ids.append(match.group(1))  # Capture the ID (group 1 after the type)
-        else:
-            print(f"❌ No {type_} ID found in entry: {entry.link}")
-    print(f"Found {len(simkl_ids)} {type_} IDs.")
-    return simkl_ids
+# Fetch the latest movies and TV shows from Simkl
+def fetch_simkl_data(type_, count=6):
+    url = f"https://api.simkl.com/{type_}/trending"
+    params = {"token": SIMKL_CLIENT_ID, "count": count}
+    res = requests.get(url, params=params)
+    if res.status_code != 200:
+        print(f"❌ Simkl API error for {type_}: {res.status_code}")
+        return []
+    data = res.json()
+    items = data.get(type_, [])
+    print(f"Found {len(items)} {type_}s.")
+    return items
 
-def get_tmdb_id_from_simkl(simkl_type, simkl_id):
+# Get TMDb ID and IMDb ID from Simkl
+def get_ids_from_simkl(simkl_type, simkl_id):
     url = f"https://api.simkl.com/{simkl_type}s/{simkl_id}?extended=full"
     headers = {"simkl-api-key": SIMKL_CLIENT_ID}
     res = requests.get(url, headers=headers)
     if res.status_code != 200:
         print(f"❌ Simkl API error for {simkl_type} ID {simkl_id}: {res.status_code}")
-        return None
+        return None, None
     data = res.json()
     tmdb_id = data.get("ids", {}).get("tmdb")
-    imdb_id = data.get("ids", {}).get("imdb")  # Fetch IMDb ID if available
-    if not tmdb_id:
-        print(f"❌ No TMDb ID found for {simkl_type} ID {simkl_id}")
-    if imdb_id:
-        print(f"🎯 Simkl ID {simkl_id} ➡️ IMDb ID: {imdb_id}")
+    imdb_id = data.get("ids", {}).get("imdb")
     return tmdb_id, imdb_id
 
-def get_tmdb_id_from_imdb(imdb_id):
-    """Fetch TMDb ID using IMDb ID"""
-    url = f"https://api.themoviedb.org/3/find/{imdb_id}"
-    params = {
-        "api_key": TMDB_API_KEY,
-        "external_source": "imdb_id"
-    }
-    res = requests.get(url, params=params)
-    if res.status_code != 200:
-        print(f"❌ TMDb API error for IMDb ID {imdb_id}: {res.status_code}")
-        return None
-    data = res.json()
-    tmdb_id = data.get("movie_results", [])[0].get("id") if data.get("movie_results") else None
-    if not tmdb_id:
-        tmdb_id = data.get("tv_results", [])[0].get("id") if data.get("tv_results") else None
-    if tmdb_id:
-        print(f"🎯 IMDb ID {imdb_id} ➡️ TMDb ID: {tmdb_id}")
-    return tmdb_id
-
+# Get poster path from TMDb
 def get_poster_path(tmdb_id, type_):
     print(f"🎬 Fetching poster from TMDb for {type_} ID {tmdb_id}")
     url = f"https://api.themoviedb.org/3/{type_}/{tmdb_id}"
     params = {
-        "api_key": TMDB_API_KEY,  # Use the API key as a query parameter
+        "api_key": TMDB_API_KEY,
         "language": "en-US"
     }
-    res = requests.get(url, params=params)  # Pass params directly to the request
+    res = requests.get(url, params=params)
     if res.status_code != 200:
         print(f"❌ TMDb error for {type_} ID {tmdb_id}: {res.status_code}")
         return None
@@ -81,6 +50,7 @@ def get_poster_path(tmdb_id, type_):
     print(f"🖼️ Poster path for {type_} ID {tmdb_id}: {poster_path}")
     return poster_path
 
+# Download poster image
 def download_poster(poster_path, filename):
     if not poster_path:
         print(f"❌ No poster path for {filename}")
@@ -91,11 +61,13 @@ def download_poster(poster_path, filename):
         f.write(img_data)
     print(f"✅ Downloaded {filename}")
 
+# Main function to update posters
 def update_posters():
     print("\n🎬 Updating most recent movie posters...")
-    movie_ids = extract_simkl_ids(MOVIES_RSS, "movies")
-    for i, simkl_id in enumerate(movie_ids, start=1):
-        tmdb_id, imdb_id = get_tmdb_id_from_simkl("movie", simkl_id)
+    movie_items = fetch_simkl_data("movie", count=6)
+    for i, item in enumerate(movie_items, start=1):
+        simkl_id = item.get("id")
+        tmdb_id, imdb_id = get_ids_from_simkl("movie", simkl_id)
         if not tmdb_id and imdb_id:
             print(f"❌ No TMDb ID found, trying IMDb ID {imdb_id}")
             tmdb_id = get_tmdb_id_from_imdb(imdb_id)
@@ -103,11 +75,10 @@ def update_posters():
         download_poster(poster_path, f"movie{i}.jpg")
 
     print("\n📺 Updating most recent TV show posters...")
-    show_ids = extract_simkl_ids(TV_RSS, "tv")
-    if not show_ids:
-        print("❌ No TV show IDs found. Check the RSS feed or filter settings.")
-    for i, simkl_id in enumerate(show_ids, start=1):
-        tmdb_id, imdb_id = get_tmdb_id_from_simkl("show", simkl_id)
+    tv_items = fetch_simkl_data("tv", count=6)
+    for i, item in enumerate(tv_items, start=1):
+        simkl_id = item.get("id")
+        tmdb_id, imdb_id = get_ids_from_simkl("show", simkl_id)
         if not tmdb_id and imdb_id:
             print(f"❌ No TMDb ID found, trying IMDb ID {imdb_id}")
             tmdb_id = get_tmdb_id_from_imdb(imdb_id)
