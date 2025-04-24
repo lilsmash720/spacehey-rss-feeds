@@ -20,13 +20,13 @@ def extract_simkl_ids(feed_url, type_, count=6):
     for entry in feed.entries[:count]:
         print(f"Link found in entry: {entry.link}")  # Print the full link for inspection
         if type_ == "tv":
-            # Corrected regex for TV show links
-            match = re.search(r"/tv/(\d+)", entry.link)
+            # Support both "shows" and "tv" formats
+            match = re.search(r"/(tv|shows)/(\d+)", entry.link)
         else:
             match = re.search(rf"/{type_}/(\d+)", entry.link)
         
         if match:
-            simkl_ids.append(match.group(1))
+            simkl_ids.append(match.group(2))  # Capture the ID (group 2 after the type)
         else:
             print(f"❌ No {type_} ID found in entry: {entry.link}")
     print(f"Found {len(simkl_ids)} {type_} IDs.")
