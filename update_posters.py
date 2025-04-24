@@ -96,7 +96,7 @@ def update_posters():
     for i, simkl_id in enumerate(movie_ids, start=1):
         tmdb_id = get_tmdb_id_from_simkl("movie", simkl_id)
         if not tmdb_id:
-            imdb_id = "tt" + simkl_id  # If no TMDb ID, try using IMDb ID
+            imdb_id = "tt" + simkl_id  # If no TMDb ID, try using IMDb ID (correctly formatted)
             print(f"❌ No TMDb ID found, trying IMDb ID {imdb_id}")
             tmdb_id = get_tmdb_id_from_imdb(imdb_id)
         poster_path = get_poster_path(tmdb_id, "movie") if tmdb_id else None
@@ -109,7 +109,7 @@ def update_posters():
     for i, simkl_id in enumerate(show_ids, start=1):
         tmdb_id = get_tmdb_id_from_simkl("show", simkl_id)
         if not tmdb_id:
-            imdb_id = "tt" + simkl_id  # If no TMDb ID, try using IMDb ID
+            imdb_id = "tt" + simkl_id  # If no TMDb ID, try using IMDb ID (correctly formatted)
             print(f"❌ No TMDb ID found, trying IMDb ID {imdb_id}")
             tmdb_id = get_tmdb_id_from_imdb(imdb_id)
         if tmdb_id:
@@ -120,3 +120,4 @@ def update_posters():
 
 if __name__ == "__main__":
     update_posters()
+
