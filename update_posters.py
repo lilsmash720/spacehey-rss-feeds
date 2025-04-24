@@ -19,11 +19,8 @@ def extract_simkl_ids(feed_url, type_, count=6):
     print(f"Parsing {type_} RSS feed...")
     for entry in feed.entries[:count]:
         print(f"Link found in entry: {entry.link}")  # Print the full link for inspection
-        if type_ == "tv":
-            # Support both "shows" and "tv" formats
-            match = re.search(r"/(tv|shows)/(\d+)", entry.link)
-        else:
-            match = re.search(rf"/{type_}/(\d+)", entry.link)
+        # Correct regex to handle both 'shows' and 'tv' formats in the link
+        match = re.search(r"/(tv|shows)/(\d+)", entry.link)
         
         if match:
             simkl_ids.append(match.group(2))  # Capture the ID (group 2 after the type)
@@ -88,3 +85,4 @@ def update_posters():
 
 if __name__ == "__main__":
     update_posters()
+
