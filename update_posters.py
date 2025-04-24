@@ -1,8 +1,8 @@
 import os
 import requests
 import feedparser
+import re
 
-# === CONFIG ===
 TMDB_API_KEY = "08d2466ce60a24dce25b03cc1ae3f497"
 HEADERS = {"Authorization": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIwOGQyNDY2Y2U2MGEyNGRjZTI1YjAzY2MxYWUzZjQ5NyIsIm5iZiI6MTczNDEyMDA0OC44NjcsInN1YiI6IjY3NWM5MjcwMzA3OTY0ZDAyMGIzNzFmMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ._gn3ltr__2hOSgecNgffiHosTwg_sAMVU1W3GP6w8BY"}
 
@@ -12,28 +12,28 @@ POSTER_DIR = "posters"
 
 os.makedirs(POSTER_DIR, exist_ok=True)
 
-def fetch_titles(feed_url, count=6):
+def extract_tmdb_ids(feed_url, count=6):
     feed = feedparser.parse(feed_url)
-    return [entry.title for entry in feed.entries[:count]]
+    ids = []
+    for entry in feed.entries:
+        # Look for tmdb:id format anywhere in the entry fields
+        for value in entry.values():
+            if isinstance(value, str):
+                match = re.search(r"tmdb[:_](\d+)", value, re.IGNORECASE)
+                if match:
+                    ids.append(match.group(1))
+                    break
+        if len(ids) >= count:
+            break
+    return ids
 
-def search_tmdb(title, type_, year=None):
-    print(f"🔍 Searching TMDb for [{title}] as a {type_}")
-    url = f"https://api.themoviedb.org/3/search/{type_}"
-    params = {
-        "query": title,
-        "api_key": TMDB_API_KEY,
-    }
-    if year:
-        params["year" if type_ == "movie" else "first_air_date_year"] = year
-
-    res = requests.get(url, params=params, headers=HEADERS)
-    results = res.json().get("results", [])
-    if not results:
-        print(f"❌ No results found for '{title}' ({year})")
+def get_poster_path(tmdb_id, type_):
+    url = f"https://api.themoviedb.org/3/{type_}/{tmdb_id}"
+    res = requests.get(url, headers=HEADERS)
+    if res.status_code != 200:
+        print(f"❌ TMDb API error for ID {tmdb_id}: {res.status_code}")
         return None
-    print(f"✅ Found: {results[0]['title' if type_ == 'movie' else 'name']}")
-    return results[0]
-
+    return res.json().get("poster_path")
 
 def download_poster(poster_path, filename):
     if not poster_path:
@@ -46,18 +46,18 @@ def download_poster(poster_path, filename):
     print(f"✅ Downloaded {filename}")
 
 def update_posters():
-    movie_titles = fetch_titles(MOVIES_RSS)
-    tv_titles = fetch_titles(TV_RSS)
+    movie_ids = extract_tmdb_ids(MOVIES_RSS)
+    show_ids = extract_tmdb_ids(TV_RSS)
 
-    print("\n🎬 Updating movie posters...")
-    for i, title in enumerate(movie_titles, start=1):
-        result = search_tmdb(title, "movie")
-        download_poster(result.get("poster_path") if result else None, f"movie{i}.jpg")
+    print("\n🎬 Movie TMDb IDs:", movie_ids)
+    for i, tmdb_id in enumerate(movie_ids, 1):
+        poster = get_poster_path(tmdb_id, "movie")
+        download_poster(poster, f"movie{i}.jpg")
 
-    print("\n📺 Updating TV show posters...")
-    for i, title in enumerate(tv_titles, start=1):
-        result = search_tmdb(title, "tv")
-        download_poster(result.get("poster_path") if result else None, f"show{i}.jpg")
+    print("\n📺 TV Show TMDb IDs:", show_ids)
+    for i, tmdb_id in enumerate(show_ids, 1):
+        poster = get_poster_path(tmdb_id, "tv")
+        download_poster(poster, f"show{i}.jpg")
 
 if __name__ == "__main__":
     update_posters()
