@@ -120,5 +120,3 @@ def update_posters():
 
 if __name__ == "__main__":
     update_posters()
-
-
