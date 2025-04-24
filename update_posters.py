@@ -20,7 +20,8 @@ def extract_simkl_ids(feed_url, type_, count=6):
     for entry in feed.entries[:count]:
         print(f"Link found in entry: {entry.link}")  # Print the full link for inspection
         if type_ == "tv":
-            match = re.search(r"/tv/(\d+)", entry.link)  # Adjusted regex for TV show links
+            # Corrected regex for TV show links
+            match = re.search(r"/tv/(\d+)", entry.link)
         else:
             match = re.search(rf"/{type_}/(\d+)", entry.link)
         
