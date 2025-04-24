@@ -6,7 +6,6 @@ import feedparser
 # === CONFIG ===
 SIMKL_CLIENT_ID = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
 TMDB_API_KEY = "08d2466ce60a24dce25b03cc1ae3f497"
-HEADERS = {"Authorization": f"Bearer {TMDB_API_KEY}"}
 
 MOVIES_RSS = "https://api.simkl.com/feeds/list/movies/completed/rss/?token=8aa77c51a4eeb0f2762a07937af73f46&client_id=feeds&country=us"
 TV_RSS = "https://api.simkl.com/feeds/list/tv/completed/rss/?token=8aa77c51a4eeb0f2762a07937af73f46&client_id=feeds&country=us"
@@ -38,8 +37,11 @@ def get_tmdb_id_from_simkl(simkl_type, simkl_id):
 def get_poster_path(tmdb_id, type_):
     print(f"🎬 Fetching poster from TMDb for {type_} ID {tmdb_id}")
     url = f"https://api.themoviedb.org/3/{type_}/{tmdb_id}"
-    params = {"language": "en-US"}
-    res = requests.get(url, headers=HEADERS, params=params)
+    params = {
+        "api_key": TMDB_API_KEY,  # Use the API key as a query parameter
+        "language": "en-US"
+    }
+    res = requests.get(url, params=params)  # Pass params directly to the request
     if res.status_code != 200:
         print(f"❌ TMDb error for {type_} ID {tmdb_id}: {res.status_code}")
         return None
@@ -74,3 +76,4 @@ def update_posters():
 
 if __name__ == "__main__":
     update_posters()
+
