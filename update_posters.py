@@ -31,14 +31,21 @@ def get_tmdb_id_from_simkl(simkl_type, simkl_id):
         print(f"❌ Simkl API error for {simkl_type} ID {simkl_id}: {res.status_code}")
         return None
     data = res.json()
-    return data.get("ids", {}).get("tmdb")
+    tmdb_id = data.get("ids", {}).get("tmdb")
+    print(f"🎯 Simkl ID {simkl_id} ➡️ TMDb ID: {tmdb_id}")
+    return tmdb_id
 
 def get_poster_path(tmdb_id, type_):
+    print(f"🎬 Fetching poster from TMDb for {type_} ID {tmdb_id}")
     url = f"https://api.themoviedb.org/3/{type_}/{tmdb_id}"
-    res = requests.get(url, headers=HEADERS)
+    params = {"language": "en-US"}
+    res = requests.get(url, headers=HEADERS, params=params)
     if res.status_code != 200:
+        print(f"❌ TMDb error for {type_} ID {tmdb_id}: {res.status_code}")
         return None
-    return res.json().get("poster_path")
+    poster_path = res.json().get("poster_path")
+    print(f"🖼️ Poster path for {type_} ID {tmdb_id}: {poster_path}")
+    return poster_path
 
 def download_poster(poster_path, filename):
     if not poster_path:
