@@ -4,11 +4,17 @@ import requests
 # === CONFIG ===
 SIMKL_API_KEY = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
 POSTER_DIR = "posters"
+BASE_URL = "https://api.simkl.com"  # Simkl base URL
 
 os.makedirs(POSTER_DIR, exist_ok=True)
 
 def fetch_simkl_data(type_, count=6):
-    url = "https://api.simkl.com/movies" if type_ == "movie" else "https://api.simkl.com/shows"
+    # Construct the correct endpoint URL
+    if type_ == "movie":
+        url = f"{BASE_URL}/movies/trending"
+    else:
+        url = f"{BASE_URL}/shows/trending"
+
     params = {
         "token": SIMKL_API_KEY,
         "limit": count,
@@ -63,4 +69,5 @@ def update_posters():
 
 if __name__ == "__main__":
     update_posters()
+
 
