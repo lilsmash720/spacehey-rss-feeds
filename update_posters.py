@@ -2,7 +2,7 @@ import os
 import requests
 
 # === CONFIG ===
-SIMKL_API_KEY = "your_simkl_api_key"
+SIMKL_API_KEY = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
 POSTER_DIR = "posters"
 
 os.makedirs(POSTER_DIR, exist_ok=True)
