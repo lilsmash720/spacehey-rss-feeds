@@ -16,12 +16,24 @@ def fetch_titles(feed_url, count=6):
     feed = feedparser.parse(feed_url)
     return [entry.title for entry in feed.entries[:count]]
 
-def search_tmdb(title, type_):
+def search_tmdb(title, type_, year=None):
+    print(f"🔍 Searching TMDb for [{title}] as a {type_}")
     url = f"https://api.themoviedb.org/3/search/{type_}"
-    params = {"query": title, "api_key": TMDB_API_KEY}
+    params = {
+        "query": title,
+        "api_key": TMDB_API_KEY,
+    }
+    if year:
+        params["year" if type_ == "movie" else "first_air_date_year"] = year
+
     res = requests.get(url, params=params, headers=HEADERS)
     results = res.json().get("results", [])
-    return results[0] if results else None
+    if not results:
+        print(f"❌ No results found for '{title}' ({year})")
+        return None
+    print(f"✅ Found: {results[0]['title' if type_ == 'movie' else 'name']}")
+    return results[0]
+
 
 def download_poster(poster_path, filename):
     if not poster_path:
