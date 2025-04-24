@@ -1,57 +1,91 @@
 import requests
 import os
 
-# Your Simkl API access details
-simkl_api_url = "https://api.simkl.com/v1/"
-simkl_api_key = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
+# Simkl API key from your environment variable
+SIMKL_CLIENT_ID = os.getenv("SIMKL_CLIENT_ID")
 
-# Make the request for movies and TV shows
-def fetch_simkl_data():
-    headers = {'Authorization': f'Bearer {simkl_api_key}'}
-    
-    # Fetch the first 6 movies
-    movie_url = f"{simkl_api_url}movies?limit=6"
-    tv_url = f"{simkl_api_url}shows?limit=6"
-    
-    movies_response = requests.get(movie_url, headers=headers).json()
-    shows_response = requests.get(tv_url, headers=headers).json()
-    
-    return movies_response, shows_response
+# TMDb API key (hardcoded here, but use env vars for production)
+TMDB_API_KEY = "8c52a7574f3fde132621ec4989da2d688e65198578b09d37bea2607c7bdc253a"
 
-# Download the posters
-def download_posters(movies, shows):
-    if not os.path.exists("posters"):
-        os.mkdir("posters")
-    
-    # Process movies
-    for i, movie in enumerate(movies):
-        poster_path = movie.get('poster')
-        if poster_path:
-            full_url = f"https://simkl.com/static/media/posters/{poster_path}.jpg"
-            download_image(full_url, f"posters/movie{i+1}.jpg")
-    
-    # Process shows
-    for i, show in enumerate(shows):
-        poster_path = show.get('poster')
-        if poster_path:
-            full_url = f"https://simkl.com/static/media/posters/{poster_path}.jpg"
-            download_image(full_url, f"posters/show{i+1}.jpg")
+# Simkl endpoints
+SIMKL_RECENT_MOVIES_URL = "https://api.simkl.com/history/movies/all/recent"
+SIMKL_RECENT_SHOWS_URL = "https://api.simkl.com/history/shows/all/recent"
 
-# Download the image to local storage
-def download_image(url, file_name):
+# TMDb poster base URL
+TMDB_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/original"
+
+HEADERS = {
+    "Content-Type": "application/json",
+    "simkl-api-key": SIMKL_CLIENT_ID
+}
+
+def fetch_recent_items(url, item_type):
+    response = requests.get(url, headers=HEADERS)
+    response.raise_for_status()
+    data = response.json()
+
+    items = []
+    for entry in data:
+        item = entry.get(item_type)
+        if not item:
+            continue
+
+        ids = item.get('ids', {})
+        tmdb_id = ids.get('tmdb')
+        if tmdb_id:
+            items.append({
+                "title": item.get("title", "Unknown"),
+                "tmdb_id": tmdb_id
+            })
+        if len(items) >= 6:
+            break
+
+    return items
+
+def get_poster_urls(items, media_type):
+    urls = []
+    for item in items:
+        tmdb_id = item["tmdb_id"]
+        tmdb_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
+        try:
+            r = requests.get(tmdb_url)
+            r.raise_for_status()
+            poster_path = r.json().get("poster_path")
+            if poster_path:
+                urls.append(f"{TMDB_IMAGE_BASE_URL}{poster_path}")
+        except Exception as e:
+            print(f"Failed to fetch poster for {item['title']} ({tmdb_id}): {e}")
+    return urls
+
+def download_poster(url, filename):
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        with open(file_name, 'wb') as f:
-            f.write(response.content)
-        print(f"Downloaded {file_name}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error downloading {file_name}: {e}")
+        r = requests.get(url, stream=True)
+        r.raise_for_status()
+        with open(filename, 'wb') as f:
+            for chunk in r.iter_content(1024):
+                f.write(chunk)
+        print(f"Downloaded: {filename}")
+    except Exception as e:
+        print(f"Error downloading {url}: {e}")
 
-# Main function to handle the process
+def download_posters(movie_posters, show_posters):
+    for i, url in enumerate(movie_posters[:6], 1):
+        download_poster(url, f"movie{i}.jpg")
+    for i, url in enumerate(show_posters[:6], 1):
+        download_poster(url, f"show{i}.jpg")
+
 def main():
-    movies, shows = fetch_simkl_data()
-    download_posters(movies, shows)
+    print("Fetching recent movies and shows from Simkl...")
+    recent_movies = fetch_recent_items(SIMKL_RECENT_MOVIES_URL, "movie")
+    recent_shows = fetch_recent_items(SIMKL_RECENT_SHOWS_URL, "show")
+
+    print("Fetching poster URLs from TMDb...")
+    movie_posters = get_poster_urls(recent_movies, "movie")
+    show_posters = get_poster_urls(recent_shows, "tv")
+
+    print("Downloading posters...")
+    download_posters(movie_posters, show_posters)
 
 if __name__ == "__main__":
     main()
+
