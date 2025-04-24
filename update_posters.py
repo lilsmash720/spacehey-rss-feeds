@@ -26,10 +26,14 @@ def fetch_simkl_data(type_, count=6):
         print(f"❌ Error fetching {type_} data: {res.status_code}")
         return []
 
-    data = res.json()
-    items = data.get('data', [])
+    # Debugging: Print the raw response
+    print("Raw API Response:", res.json())
+    
+    data = res.json()  # Assuming the response should be a dictionary
+    items = data.get('data', [])  # Assuming the 'data' key contains the list of movies/shows
     
     return items
+
 
 # Function to fetch the TMDb ID from Simkl API response
 def get_tmdb_id_from_simkl(item):
